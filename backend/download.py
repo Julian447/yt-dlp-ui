@@ -4,20 +4,7 @@ from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import FileResponse
 import re
 
-#router imports
-from preview import router as preview_router
-from download import router as download_router
-
-app = FastAPI()
-app.include_router(preview_router)
-app.include_router(download_router)
-downloads = {}
-
-
-DOWNLOAD_DIR = "./downloads"
-os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-
-
+router = APIRouter()
 
 def progress_hook(d):
     if d['status'] == 'downloading':
@@ -44,7 +31,7 @@ async def download_audio(download_id: str, url: str):
             os.rename(orig_path, file_path)
         return file_path
 
-@app.post("/download/audio")
+@router.post("/download/audio")
 async def start_audio_download(url: str, background_tasks: BackgroundTasks, proxy: bool = False):
     download_id = url.split('=')[-1]
     downloads[download_id] = "Starting audio download"
@@ -60,15 +47,3 @@ async def start_audio_download(url: str, background_tasks: BackgroundTasks, prox
     else:
         file_path = await download_audio(download_id, url)
         return {"download_id": download_id, "type": "audio", "file_path": file_path}
-
-
-@app.get("/status/{download_id}")
-async def get_status(download_id: str):
-    status = downloads.get(download_id, "Not Found")
-    return {"status": status}
-
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
